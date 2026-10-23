@@ -13,6 +13,8 @@ Alt styres av [`stevne.md`](stevne.md). Åpne filen, trykk på blyanten, gjør e
 | Innstilling | Hva den gjør |
 |---|---|
 | `smoothcomp` | Lenken til kamplista i TV-modus |
+| `klubb` | Klubbnavnet øverst på infosiden |
+| `logo` | Bildet ved siden av klubbnavnet, for eksempel `bilder/logo.png`, eller `nei` |
 | `kamplista` | `venstre` eller `høyre` |
 | `bredde` | Hvor stor del av skjermen kamplista får, i prosent |
 | `zoom` | Tekststørrelse i kamplista, i prosent |
@@ -43,6 +45,7 @@ Betal med Vipps.
 ```
 
 - `#` gir stor overskrift, `##` mindre overskrift, `-` gir punktliste.
+- `*ord*` blir gull, for å fremheve noe. `**ord**` blir fet.
 - Linjeskift i teksten blir linjeskift på skjermen.
 - Blir det mye tekst på en side, krymper skriften til den får plass.
 - En side med bare et bilde fyller hele infohalvdelen.
