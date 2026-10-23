@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stevneskjerm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gi-blue: #143E96;   /* blå judogi */
+    --deep: #0A2462;      /* mørk kant og tekst */
+    --white: #FFFFFF;     /* hvit judogi */
+    --mist: #C9D6F1;      /* sekundær tekst på blått */
+    --tatami: #F2C53D;    /* gul tatami, kun fremdrift */
+    --line: #C3CFEA;
+    --split: 50%;
+    --interval: 12s;
+    --font-body: "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --font-head: "Barlow Semi Condensed", "Barlow", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: var(--deep); color: var(--white); font-family: var(--font-body); }
+  body.idle, body.idle * { cursor: none !important; }
+
+  /* ---------- Delt skjerm ---------- */
+  .stage { display: flex; width: 100vw; height: 100vh; gap: 6px; background: var(--deep); }
+  .stage.swap { flex-direction: row-reverse; }
+  .sc { flex: 0 0 calc(var(--split) - 3px); position: relative; overflow: hidden; background: #fff; }
+  .sc iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; background: #fff; }
+  .info { flex: 1 1 auto; min-width: 0; position: relative; display: flex; flex-direction: column; background: var(--gi-blue); }
+
+  /* ---------- Infosider ---------- */
+  .slides { position: relative; flex: 1 1 auto; min-height: 0; }
+  .slide { position: absolute; inset: 0; opacity: 0; transition: opacity .7s ease; }
+  .slide.on { opacity: 1; }
+
+  .slide.text { padding: 7vh 5vw 3vh; display: flex; flex-direction: column; justify-content: center; }
+  .slide.text .content { --fit: 1; font-size: calc(min(4.2vh, 2.5vw) * var(--fit)); font-weight: 500; line-height: 1.32; max-width: 32ch; }
+  .content > :first-child { margin-top: 0; }
+  .content > :last-child { margin-bottom: 0; }
+  .content h1 {
+    margin: 0 0 .75em; font-family: var(--font-head); font-weight: 700;
+    font-size: 2em; line-height: 1.02; letter-spacing: -0.005em; text-wrap: balance;
+  }
+  .content h2 { margin: 1.1em 0 .4em; font-family: var(--font-head); font-weight: 700; font-size: 1.35em; line-height: 1.1; }
+  .content h3 { margin: 1em 0 .3em; font-family: var(--font-head); font-weight: 600; font-size: 1.1em; line-height: 1.15; color: var(--mist); }
+  .content p { margin: 0 0 .8em; text-wrap: pretty; }
+  .content ul, .content ol { margin: 0 0 .8em; padding-left: 1.1em; }
+  .content li { margin: 0 0 .4em; padding-left: .2em; text-wrap: pretty; }
+  .content li::marker { color: var(--mist); }
+  .content strong { font-weight: 700; }
+  .content a { color: inherit; }
+  .content img { display: block; max-width: 100%; max-height: 42vh; margin: .2em 0; border-radius: 6px; }
+  .content table { border-collapse: collapse; margin: 0 0 .8em; font-variant-numeric: tabular-nums; }
+  .content th { text-align: left; font-weight: 600; color: var(--mist); }
+  .content th, .content td { padding: .28em 1.1em .28em 0; border-bottom: 1px solid rgba(255,255,255,.25); vertical-align: top; }
+  .content hr { display: none; }
+  .content code { font: inherit; background: rgba(255,255,255,.12); padding: 0 .2em; border-radius: 4px; }
+
+  .slide.image { background: var(--deep); }
+  .slide.image img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+  .notice { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; padding: 0 5vw; font-size: min(3.4vh, 2.1vw); line-height: 1.35; color: var(--mist); }
+  .notice[hidden] { display: none; }
+  .notice strong { display: block; margin-bottom: .5em; font: 700 1.4em/1.1 var(--font-head); color: var(--white); }
+  .notice p { margin: 0; max-width: 34ch; }
+
+  /* Fremdrift: ett segment per infoside, i rekkefølge */
+  .progress { display: flex; gap: .7vw; padding: 0 5vw; height: .7vh; min-height: 5px; }
+  .progress[hidden] { display: none; }
+  .info.no-foot .progress { margin-bottom: 3.4vh; }
+  .seg { flex: 1; border-radius: 99px; overflow: hidden; background: rgba(255,255,255,.2); }
+  .seg i { display: block; height: 100%; width: 0; background: var(--tatami); }
+  .seg.done i, .seg.hold i { width: 100%; }
+  .seg.run i { animation: fill var(--interval) linear forwards; }
+  @keyframes fill { from { width: 0; } to { width: 100%; } }
+
+  .foot { display: flex; align-items: center; gap: 2.2vw; padding: 2.6vh 5vw 3.4vh; }
+  .foot[hidden] { display: none; }
+  .qr { flex: 0 0 auto; width: 16vh; height: 16vh; background: #fff; border-radius: 6px; }
+  .qr svg { display: block; width: 100%; height: 100%; }
+  .foot strong { display: block; font-family: var(--font-head); font-weight: 700; font-size: min(3.8vh, 2.3vw); line-height: 1.1; }
+  .foot span { display: block; margin-top: .8vh; font-size: min(2.5vh, 1.5vw); line-height: 1.3; color: var(--mist); max-width: 34ch; }
+
+  .help-btn {
+    position: absolute; top: 1.8vh; right: 1.4vw; z-index: 5;
+    font: 600 15px/1 var(--font-body); color: var(--white);
+    background: rgba(10,36,98,.55); border: 1.5px solid rgba(255,255,255,.5); border-radius: 99px;
+    padding: 10px 16px; cursor: pointer; transition: opacity .3s;
+  }
+  body.idle .help-btn { opacity: 0; }
+
+  .toast {
+    position: fixed; left: 50%; top: 4vh; z-index: 30; transform: translate(-50%, -20px);
+    background: var(--white); color: var(--deep); font: 600 18px/1.3 var(--font-body);
+    padding: 14px 22px; border-radius: 10px; box-shadow: 0 8px 30px rgba(0,0,0,.35);
+    opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; max-width: 80vw;
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ---------- Hjelp ---------- */
+  .help {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 40; width: min(480px, 94vw);
+    background: var(--white); color: var(--deep); overflow-y: auto; overscroll-behavior: contain;
+    box-shadow: -10px 0 40px rgba(0,0,0,.35);
+    transform: translateX(100%); visibility: hidden;
+    transition: transform .25s ease, visibility 0s linear .25s;
+    font-size: 16px; line-height: 1.45;
+  }
+  .help.open { transform: none; visibility: visible; transition: transform .25s ease; }
+  .h-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 18px 24px; background: var(--white); border-bottom: 1px solid var(--line); }
+  .h-head h2 { margin: 0; font: 700 26px/1.1 var(--font-head); }
+  .help section { padding: 20px 24px 22px; border-bottom: 1px solid var(--line); }
+  .help h3 { margin: 0 0 10px; font: 700 20px/1.2 var(--font-head); }
+  .help p { margin: 0 0 10px; }
+  .help a { color: var(--gi-blue); font-weight: 600; word-break: break-all; }
+  .muted { color: #4A5F8F; font-size: 15px; }
+  .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0; }
+  .keys dt { font-weight: 600; white-space: nowrap; }
+  .keys dd { margin: 0; }
+  kbd { font: 600 14px/1 var(--font-body); border: 1.5px solid var(--line); border-bottom-width: 3px; border-radius: 6px; padding: 3px 7px; }
+  .btn { font: 600 16px/1 var(--font-body); padding: 11px 16px; border-radius: 8px; border: 1.5px solid var(--gi-blue); background: var(--gi-blue); color: #fff; cursor: pointer; }
+  .btn.ghost { background: transparent; color: var(--gi-blue); }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  :focus-visible { outline: 3px solid var(--tatami); outline-offset: 2px; }
+  .help :focus-visible { outline-color: var(--gi-blue); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .slide, .help, .toast, .help-btn { transition: none !important; }
+    .seg.run i { animation: none; width: 100%; }
+  }
+</style>
+</head>
+<body>
+  <main class="stage" id="stage">
+    <div class="sc" id="sc">
+      <iframe id="frame" title="Kamper fra Smoothcomp"></iframe>
+    </div>
+    <div class="info" id="info">
+      <button class="help-btn" id="help-btn" type="button">Hjelp</button>
+      <div class="slides" id="slides" aria-live="polite"></div>
+      <div class="notice" id="notice" hidden></div>
+      <div class="progress" id="progress" hidden></div>
+      <footer class="foot" id="foot" hidden>
+        <div class="qr" id="qr"></div>
+        <div>
+          <strong>Følg kampene dine på mobilen</strong>
+          <span>Skann koden, eller finn stevnet i Smoothcomp-appen.</span>
+        </div>
+      </footer>
+    </div>
+  </main>
+
+  <aside class="help" id="help" role="dialog" aria-labelledby="h-title">
+    <header class="h-head">
+      <h2 id="h-title">Hjelp</h2>
+      <button class="btn" id="close" type="button">Lukk</button>
+    </header>
+    <section>
+      <h3>Endre innholdet</h3>
+      <p>Alt på skjermen styres av filen <b>stevne.md</b>. Endringer vises her innen et par minutter, uten at du trenger å røre denne maskinen.</p>
+      <p id="edit-link" hidden><a target="_blank" rel="noopener"></a></p>
+      <p class="muted" id="status">Har ikke hentet innholdet ennå.</p>
+    </section>
+    <section>
+      <h3>Taster</h3>
+      <dl class="keys">
+        <dt><kbd>F</kbd></dt><dd>Fullskjerm av og på</dd>
+        <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd>Forrige og neste infoside</dd>
+        <dt><kbd>+</kbd> <kbd>−</kbd></dt><dd>Større og mindre kampliste, til siden lastes på nytt</dd>
+        <dt><kbd>R</kbd></dt><dd>Hent innholdet og last kamplista på nytt</dd>
+        <dt><kbd>H</kbd></dt><dd>Vis og skjul denne hjelpen</dd>
+      </dl>
+      <p class="muted" style="margin-top:12px">Tastene virker ikke etter at du har klikket inne i kamplista. Klikk på infosiden først.</p>
+    </section>
+    <section>
+      <h3>Er kamplista tom?</h3>
+      <p>Står det at siden nektet tilkobling, slipper ikke Smoothcomp kamplista inn i denne siden. Åpne den i eget vindu og legg vinduene side om side.</p>
+      <div class="row">
+        <button class="btn ghost" id="b-popup" type="button">Åpne kamplista i eget vindu</button>
+        <button class="btn ghost" id="b-fs" type="button">Fullskjerm</button>
+      </div>
+    </section>
+  </aside>
+
+  <div class="toast" id="toast" role="status"></div>
+
+<script src="lib/marked.min.js"></script>
+<script src="lib/qrcode.js"></script>
+<script>
+(function () {
+  "use strict";
+
+  var SOURCE = "stevne.md";
+  var POLL_MS = 60000;
+  var DEFAULTS = { smoothcomp: "", kamplista: "venstre", bredde: 50, zoom: 75, sekunder: 12, qr: "auto", oppfrisk: 0 };
+
+  var $ = function (s) { return document.querySelector(s); };
+  var stage = $("#stage"), sc = $("#sc"), frame = $("#frame"), slidesBox = $("#slides");
+  var help = $("#help"), progress = $("#progress"), notice = $("#notice");
+
+  var cfg = Object.assign({}, DEFAULTS);
+  var zoomNudge = 0;          // +/- på skjermen, gjelder til siden lastes på nytt
+  var lastText = null, lastOk = null, lastErr = null;
+
+  /* ---------- Lese stevne.md ---------- */
+  function parse(text) {
+    text = text.replace(/\r\n?/g, "\n").replace(/^﻿/, "");
+    var conf = {}, body = text;
+    var m = /^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/.exec(text);
+    if (m) {
+      body = text.slice(m[0].length);
+      m[1].split("\n").forEach(function (line) {
+        if (/^\s*#/.test(line)) return;
+        var kv = /^\s*([A-Za-zæøåÆØÅ_-]+)\s*:\s*(.*)$/.exec(line);
+        if (!kv) return;
+        var v = kv[2].replace(/\s+#.*$/, "").trim().replace(/^(["'])(.*)\1$/, "$2");
+        conf[kv[1].toLowerCase()] = v;
+      });
+    }
+    var slides = body.split(/\n[ \t]*---[ \t]*(?=\n|$)/)
+      .map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.replace(/<!--[\s\S]*?-->/g, "").trim().length > 0; });
+    return { conf: conf, slides: slides };
+  }
+
+  function num(v, def, lo, hi) { var n = parseFloat(v); if (isNaN(n)) n = def; return Math.min(hi, Math.max(lo, n)); }
+
+  function applyConf(c) {
+    cfg = {
+      smoothcomp: (c.smoothcomp || "").trim(),
+      kamplista: /^h/i.test(c.kamplista || "") ? "høyre" : "venstre",
+      bredde: num(c.bredde, DEFAULTS.bredde, 20, 80),
+      zoom: num(c.zoom, DEFAULTS.zoom, 30, 200),
+      sekunder: num(c.sekunder, DEFAULTS.sekunder, 3, 600),
+      qr: (c.qr || "auto").trim(),
+      oppfrisk: num(c.oppfrisk, 0, 0, 240)
+    };
+    layout();
+    setFrame(false);
+    scheduleReload();
+    renderQr();
+  }
+
+  /* ---------- Kamplista ---------- */
+  function zoom() { return Math.min(200, Math.max(30, cfg.zoom + zoomNudge)); }
+  function layout() {
+    document.documentElement.style.setProperty("--split", cfg.bredde + "%");
+    stage.classList.toggle("swap", cfg.kamplista === "høyre");
+    var z = zoom() / 100, w = sc.clientWidth, h = sc.clientHeight;
+    frame.style.width = Math.ceil(w / z) + "px";
+    frame.style.height = Math.ceil(h / z) + "px";
+    frame.style.transform = "scale(" + z + ")";
+  }
+  function setFrame(force) {
+    var url = cfg.smoothcomp;
+    if (!url) { frame.removeAttribute("src"); return; }
+    if (force) { frame.src = "about:blank"; setTimeout(function () { frame.src = url; }, 60); }
+    else if (frame.getAttribute("src") !== url) frame.src = url;
+  }
+  var reloadTimer = null, reloadEvery = -1;
+  function scheduleReload() {
+    if (cfg.oppfrisk === reloadEvery) return;
+    reloadEvery = cfg.oppfrisk; clearInterval(reloadTimer);
+    if (reloadEvery > 0) reloadTimer = setInterval(function () { setFrame(true); }, reloadEvery * 60000);
+  }
+  if (window.ResizeObserver) new ResizeObserver(function () { layout(); fitAll(); }).observe(sc);
+  window.addEventListener("resize", function () { layout(); fitAll(); });
+
+  /* ---------- QR-kode ---------- */
+  function eventUrl(u) {
+    var m = /^(https?:\/\/[^\/]+)\/([A-Za-z_]+)\/event\/(\d+)/.exec(u || "");
+    return m ? m[1] + "/" + m[2] + "/event/" + m[3] : "";
+  }
+  function renderQr() {
+    var v = cfg.qr, target = /^(nei|no|av|off|false)$/i.test(v) ? "" : (/^auto$/i.test(v) || !v ? eventUrl(cfg.smoothcomp) : v);
+    var foot = $("#foot"), box = $("#qr");
+    foot.hidden = !target || typeof qrcode !== "function";
+    $("#info").classList.toggle("no-foot", foot.hidden);
+    if (foot.hidden || box.dataset.target === target) return;
+    var q = qrcode(0, "M"); q.addData(target); q.make();
+    var n = q.getModuleCount(), m = 3, s = n + m * 2, d = "";
+    for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (q.isDark(r, c)) d += "M" + (c + m) + " " + (r + m) + "h1v1h-1z";
+    box.innerHTML = '<svg viewBox="0 0 ' + s + " " + s + '" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges" role="img" aria-label="QR-kode til stevnet"><rect width="' + s + '" height="' + s + '" fill="#fff"/><path d="' + d + '" fill="#0A2462"/></svg>';
+    box.dataset.target = target;
+  }
+
+  /* ---------- Infosider ---------- */
+  var slideEls = [], idx = 0, rotTimer = null;
+  var reduced = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (window.marked) marked.setOptions({ gfm: true, breaks: true });
+
+  function buildSlides(sources) {
+    slidesBox.innerHTML = ""; slideEls = [];
+    sources.forEach(function (src) {
+      var el = document.createElement("section");
+      var tmp = document.createElement("div");
+      tmp.innerHTML = window.marked ? marked.parse(src) : src;
+      var kids = Array.prototype.filter.call(tmp.children, function (n) { return n.tagName !== "HR"; });
+      var only = kids.length === 1 && kids[0].tagName === "P" && kids[0].querySelectorAll("img").length === 1 && kids[0].textContent.trim() === "" ? kids[0].querySelector("img") : null;
+      if (only) {
+        el.className = "slide image";
+        var img = new Image(); img.src = only.getAttribute("src"); img.alt = only.alt || "Infobilde";
+        el.appendChild(img);
+      } else {
+        el.className = "slide text";
+        var content = document.createElement("div"); content.className = "content";
+        while (tmp.firstChild) content.appendChild(tmp.firstChild);
+        Array.prototype.forEach.call(content.querySelectorAll("img"), function (im) { im.addEventListener("load", function () { fit(el); }); });
+        el.appendChild(content);
+      }
+      slidesBox.appendChild(el); slideEls.push(el);
+    });
+    progress.innerHTML = "";
+    progress.hidden = slideEls.length < 2;
+    slideEls.forEach(function () {
+      var seg = document.createElement("div"); seg.className = "seg";
+      seg.appendChild(document.createElement("i")); progress.appendChild(seg);
+    });
+    fitAll();
+    show(Math.min(idx, Math.max(slideEls.length - 1, 0)));
+  }
+
+  // Krymper teksten på en side til den får plass.
+  function fit(el) {
+    var c = el.querySelector(".content"); if (!c) return;
+    var cs = getComputedStyle(el);
+    var availH = el.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+    var availW = el.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
+    var f = 1; c.style.setProperty("--fit", f);
+    while ((c.scrollHeight > availH + 1 || c.scrollWidth > availW + 1) && f > 0.4) {
+      f = Math.round((f - 0.05) * 100) / 100; c.style.setProperty("--fit", f);
+    }
+  }
+  function fitAll() { slideEls.forEach(fit); }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fitAll);
+
+  function show(i) {
+    if (!slideEls.length) { clearTimeout(rotTimer); return; }
+    idx = (i + slideEls.length) % slideEls.length;
+    slideEls.forEach(function (el, k) { el.classList.toggle("on", k === idx); });
+    var paused = help.classList.contains("open");
+    document.documentElement.style.setProperty("--interval", cfg.sekunder + "s");
+    Array.prototype.forEach.call(progress.children, function (seg, k) {
+      seg.className = "seg" + (k < idx ? " done" : "");
+      if (k === idx) { void seg.offsetWidth; seg.className = "seg " + (paused || reduced ? "hold" : "run"); }
+    });
+    clearTimeout(rotTimer);
+    if (!paused && slideEls.length > 1) rotTimer = setTimeout(function () { show(idx + 1); }, cfg.sekunder * 1000);
+  }
+
+  function setNotice(title, text) {
+    if (!title) { notice.hidden = true; notice.innerHTML = ""; return; }
+    notice.innerHTML = "";
+    var s = document.createElement("strong"); s.textContent = title;
+    var p = document.createElement("p"); p.textContent = text;
+    notice.appendChild(s); notice.appendChild(p); notice.hidden = false;
+  }
+
+  /* ---------- Hente innhold ---------- */
+  function clock(d) { return d.toLocaleTimeString("nb-NO", { hour: "2-digit", minute: "2-digit", second: "2-digit" }); }
+  function updateStatus() {
+    var s = lastOk ? "Sist hentet " + clock(lastOk) + "." : "Har ikke hentet innholdet ennå.";
+    if (lastErr && (!lastOk || lastErr > lastOk)) s += " Siste forsøk " + clock(lastErr) + " feilet, så skjermen viser det den hadde fra før.";
+    $("#status").textContent = s;
+  }
+
+  function fetchContent(manual) {
+    return fetch(SOURCE + "?t=" + Date.now(), { cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(function (text) {
+        lastOk = new Date(); updateStatus();
+        if (text === lastText) { if (manual) toast("Innholdet er uendret"); return; }
+        var first = lastText === null;
+        lastText = text;
+        var parsed = parse(text);
+        applyConf(parsed.conf);
+        buildSlides(parsed.slides);
+        if (!cfg.smoothcomp) setNotice("Mangler lenke til kamplista", "Legg inn smoothcomp: med lenken til TV-modus øverst i stevne.md.");
+        else if (!parsed.slides.length) setNotice("Ingen infosider ennå", "Skriv infosidene nederst i stevne.md. Skill sidene med en linje som bare inneholder ---.");
+        else setNotice(null);
+        if (!first) toast("Innholdet er oppdatert");
+      })
+      .catch(function () {
+        lastErr = new Date(); updateStatus();
+        if (lastText === null) {
+          setNotice("Fant ikke stevne.md", location.protocol === "file:"
+            ? "Siden må åpnes fra GitHub Pages eller en webserver. Den kan ikke hente stevne.md når den åpnes som en fil."
+            : "Sjekk at stevne.md ligger ved siden av index.html i repoet. Skjermen prøver igjen hvert minutt.");
+        }
+        if (manual) toast("Fikk ikke hentet innholdet. Prøver igjen om et minutt.");
+      });
+  }
+
+  /* ---------- Lenke til redigering på GitHub ---------- */
+  (function editLink() {
+    var host = location.hostname, m = /^([^.]+)\.github\.io$/i.exec(host);
+    if (!m) return;
+    var parts = location.pathname.split("/").filter(Boolean);
+    var repo = parts.length && !/\.html?$/i.test(parts[0]) ? parts[0] : host;
+    var url = "https://github.com/" + m[1] + "/" + repo + "/edit/main/" + SOURCE;
+    var a = $("#edit-link a"); a.href = url; a.textContent = url.replace(/^https:\/\//, "");
+    $("#edit-link").hidden = false;
+  })();
+
+  /* ---------- Hjelp, taster, musepeker ---------- */
+  function openHelp() { help.classList.add("open"); document.body.classList.remove("idle"); updateStatus(); show(idx); setTimeout(function () { $("#close").focus(); }, 30); }
+  function closeHelp() { help.classList.remove("open"); show(idx); $("#help-btn").focus({ preventScroll: true }); }
+  function toggleHelp() { help.classList.contains("open") ? closeHelp() : openHelp(); }
+  $("#help-btn").addEventListener("click", openHelp);
+  $("#close").addEventListener("click", closeHelp);
+  $("#b-fs").addEventListener("click", toggleFullscreen);
+  $("#b-popup").addEventListener("click", function () {
+    if (!cfg.smoothcomp) return;
+    var w = Math.round(screen.availWidth * cfg.bredde / 100), h = screen.availHeight;
+    var left = cfg.kamplista === "høyre" ? screen.availWidth - w : 0;
+    window.open(cfg.smoothcomp, "smoothcomp", "popup,left=" + left + ",top=0,width=" + w + ",height=" + h);
+  });
+
+  function toggleFullscreen() {
+    var d = document, el = d.documentElement;
+    if (d.fullscreenElement || d.webkitFullscreenElement) (d.exitFullscreen || d.webkitExitFullscreen).call(d);
+    else if (el.requestFullscreen) el.requestFullscreen().catch(function () {});
+    else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+  }
+
+  window.addEventListener("keydown", function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    switch (e.key) {
+      case "h": case "H": case "?": toggleHelp(); break;
+      case "Escape": if (help.classList.contains("open")) closeHelp(); break;
+      case "f": case "F": toggleFullscreen(); break;
+      case "r": case "R": setFrame(true); fetchContent(true); break;
+      case "ArrowRight": show(idx + 1); break;
+      case "ArrowLeft": show(idx - 1); break;
+      case "+": case "=": nudge(5); break;
+      case "-": case "_": nudge(-5); break;
+      default: return;
+    }
+    e.preventDefault();
+  });
+  function nudge(d) {
+    zoomNudge += d; layout();
+    toast("Kamplista: " + zoom() + " %. Skriv zoom: " + zoom() + " i stevne.md for å beholde det.", 4000);
+  }
+
+  var idleTimer = null;
+  function wake() {
+    document.body.classList.remove("idle");
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(function () { if (!help.classList.contains("open")) document.body.classList.add("idle"); }, 3000);
+  }
+  ["mousemove", "mousedown", "keydown", "touchstart"].forEach(function (ev) { window.addEventListener(ev, wake, { passive: true }); });
+
+  var toastTimer = null;
+  function toast(msg, ms) {
+    var t = $("#toast"); t.textContent = msg; t.classList.add("on");
+    clearTimeout(toastTimer); toastTimer = setTimeout(function () { t.classList.remove("on"); }, ms || 2200);
+  }
+
+  /* ---------- Start ---------- */
+  layout();
+  fetchContent(false);
+  setInterval(function () { fetchContent(false); }, POLL_MS);
+  wake();
+  toast("Trykk H for hjelp og F for fullskjerm", 5000);
+})();
+</script>
+</body>
+</html>
