@@ -8,7 +8,7 @@ smoothcomp: https://judonorway.smoothcomp.com/no/event/35811/schedule/matches?tv
 kamplista: venstre
 
 # Hvor stor del av skjermen kamplista får, i prosent
-bredde: 50
+bredde: 60
 
 # Tekststørrelse i kamplista, i prosent. Mindre tall gir plass til flere kamper.
 zoom: 75
@@ -25,22 +25,22 @@ oppfrisk: 0
 
 # Velkommen til klubbstevne
 
-Levanger Judoklubb
-27. oktober 2026
-
-Kampene som står for tur, vises på skjermen ved siden av.
-
----
-
-# Kiosken er åpen
-
-Kaffe, vafler og saft.
-Betal med Vipps.
-
----
-
-# Til utøverne
-
 - Følg med på kamplista, den oppdateres hele tiden.
-- Vær klar ved matta i god tid før kampen din.
-- Spør sekretariatet hvis du lurer på noe.
+- Står navnet ditt øverst - hvitt kampbelte
+- Står navnet ditt nederst - rødt kampbelte
+
+---
+
+# Verdens judodag
+
+I år er "tilhørighet" årets tema
+
+Verdens judodag feires på dagen Jigoro Kano ble født, 28. oktober
+
+---
+
+# Viktige datoer
+
+Landsstevnet i Trondheim 7/11
+
+Innherredscup II, Levanger dojo 5/12
