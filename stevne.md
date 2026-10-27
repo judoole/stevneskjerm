@@ -2,7 +2,7 @@
 # Innstillinger for skjermen. Endringer vises på skjermen innen et par minutter.
 
 # Lenken til kamplista i Smoothcomp (TV-modus)
-smoothcomp: https://judonorway.smoothcomp.com/en/event/32222/schedule/matches?tvmode=1&listView=full
+smoothcomp: https://judonorway.smoothcomp.com/en/event/35811/schedule/matches?tvmode=1&listView=full
 
 # Klubbnavn og logo øverst på infosiden. Skriv logo: nei for å skjule logoen.
 klubb: Levanger Judoklubb
